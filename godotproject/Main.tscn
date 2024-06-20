@@ -102,19 +102,21 @@ agentsList = [NodePath("../AgentBody/Agent")]
 position = Vector2(91, 62)
 
 [node name="Wall" type="StaticBody2D" parent="." groups=["WALL"]]
+position = Vector2(19, 4)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall" groups=["WALL"]]
 position = Vector2(-1, 118.5)
 shape = SubResource("RectangleShape2D_j3433")
 
 [node name="Wall3" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(264, 2)
+position = Vector2(253, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall3" groups=["WALL"]]
 position = Vector2(-1, 118.5)
 shape = SubResource("RectangleShape2D_j3433")
 
 [node name="Wall2" type="StaticBody2D" parent="." groups=["WALL"]]
+position = Vector2(-5, -1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall2" groups=["WALL"]]
 position = Vector2(139, -1)
@@ -122,7 +124,7 @@ rotation = 1.5708
 shape = SubResource("RectangleShape2D_aycpo")
 
 [node name="Wall4" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(0, 247)
+position = Vector2(-5, 247)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall4" groups=["WALL"]]
 position = Vector2(139, -1)
