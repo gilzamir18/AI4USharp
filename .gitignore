@@ -1,0 +1,12 @@
+# Godot 4+ specific ignores
+.godot/
+*.vsidx
+*.v2
+*.bin
+.vs/Demo1/v17/.suo
+.vs
+doc/trainer_example/demo2dscene/DQN
+/doc/trainer_example/demo2dscene/DQN
+doc/trainer_example/scene_simplescene_vision/SAC
+doc/trainer_example/scene_simplescene_vision/model.onnx
+doc/trainer_example/scene_simplescene_vision/ai4u_model.zip
