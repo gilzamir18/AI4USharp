@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://qwn7lq4qmfiy"]
+[gd_scene load_steps=23 format=3 uid="uid://qwn7lq4qmfiy"]
 
 [ext_resource type="Script" path="res://AgentBody.cs" id="1_ronsf"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/agents/BasicAgent.cs" id="1_vt1q8"]
@@ -8,20 +8,48 @@
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/ControlRequestor.cs" id="6_g4j3j"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/CBRespawnActuator2D.cs" id="6_mqyyi"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/TouchRewardFunc2D.cs" id="7_k3qe6"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/PPOTrainer.cs" id="7_tiprw"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/MLPPPOTrainer.cs" id="8_54m80"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/TrainController.cs" id="8_b3iyv"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/GroupTouchRewardFunc2D.cs" id="10_yo41t"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dcnmv"]
 size = Vector2(20, 52)
 
+[sub_resource type="Gradient" id="Gradient_611cs"]
+offsets = PackedFloat32Array(0.973913, 0.991304, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.930435, 0.930435, 0.930435, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_eskxy"]
+gradient = SubResource("Gradient_611cs")
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_c4gty"]
+radius = 25.1794
+
+[sub_resource type="Gradient" id="Gradient_ny721"]
+offsets = PackedFloat32Array(0, 0.495652, 0.573913)
+colors = PackedColorArray(1, 1, 1, 1, 0.924242, 0.924242, 0.924242, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_urjle"]
+gradient = SubResource("Gradient_ny721")
+fill = 1
+fill_from = Vector2(0.472393, 0.493865)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_j3433"]
 size = Vector2(18, 257)
 
+[sub_resource type="Gradient" id="Gradient_m4xdh"]
+offsets = PackedFloat32Array(0, 0.00869565)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_shjbx"]
+gradient = SubResource("Gradient_m4xdh")
+fill = 1
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_aycpo"]
 size = Vector2(18, 257)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_gc86o"]
+gradient = SubResource("Gradient_m4xdh")
+fill = 1
 
 [node name="Main" type="Node2D"]
 
@@ -30,6 +58,8 @@ position = Vector2(110, 61)
 scale = Vector2(4.16, 0.24)
 motion_mode = 1
 script = ExtResource("1_ronsf")
+speed = 100.0
+turnAmount = 10.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AgentBody"]
 position = Vector2(0, 16)
@@ -74,7 +104,8 @@ target = NodePath("../../../Target")
 causeEpisodeToEnd = true
 
 [node name="PPOTrainer" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("7_tiprw")
+script = ExtResource("8_54m80")
+horizon = 51
 
 [node name="TrainerController" type="Node" parent="AgentBody/Agent"]
 script = ExtResource("8_b3iyv")
@@ -87,46 +118,76 @@ reward = -10.0
 group = "WALL"
 causeEpisodeToEnd = true
 
+[node name="Sprite2D" type="Sprite2D" parent="AgentBody"]
+position = Vector2(1.08173, 16.6667)
+scale = Vector2(0.274189, 0.651042)
+texture = SubResource("GradientTexture2D_eskxy")
+
 [node name="Target" type="StaticBody2D" parent="."]
 modulate = Color(0.7, 0, 0.0116665, 1)
 position = Vector2(157, 159)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Target"]
 shape = SubResource("CircleShape2D_c4gty")
+debug_color = Color(0.584422, 0.487564, 0.682981, 0.42)
+
+[node name="Sprite2D" type="Sprite2D" parent="Target"]
+texture = SubResource("GradientTexture2D_urjle")
 
 [node name="ControlRequestor" type="Node" parent="." node_paths=PackedStringArray("agentsList")]
 script = ExtResource("6_g4j3j")
+defaultTimeScale = 10.0
 agentsList = [NodePath("../AgentBody/Agent")]
 
 [node name="AgentPosition" type="Node2D" parent="."]
 position = Vector2(91, 62)
 
 [node name="Wall" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(19, 4)
+position = Vector2(17, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall" groups=["WALL"]]
 position = Vector2(-1, 118.5)
 shape = SubResource("RectangleShape2D_j3433")
 
+[node name="Sprite2D" type="Sprite2D" parent="Wall"]
+position = Vector2(-0.5, 120)
+scale = Vector2(0.359375, 4.25)
+texture = SubResource("GradientTexture2D_shjbx")
+
 [node name="Wall3" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(253, 1)
+position = Vector2(255, 19)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall3" groups=["WALL"]]
 position = Vector2(-1, 118.5)
 shape = SubResource("RectangleShape2D_j3433")
 
+[node name="Sprite2D" type="Sprite2D" parent="Wall3"]
+position = Vector2(-0.5, 120)
+scale = Vector2(0.359375, 4.25)
+texture = SubResource("GradientTexture2D_shjbx")
+
 [node name="Wall2" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(-5, -1)
+position = Vector2(-5, 11)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall2" groups=["WALL"]]
 position = Vector2(139, -1)
 rotation = 1.5708
 shape = SubResource("RectangleShape2D_aycpo")
 
+[node name="Sprite2D" type="Sprite2D" parent="Wall2"]
+position = Vector2(141.5, -1)
+scale = Vector2(4.04688, 0.28125)
+texture = SubResource("GradientTexture2D_gc86o")
+
 [node name="Wall4" type="StaticBody2D" parent="." groups=["WALL"]]
-position = Vector2(-5, 247)
+position = Vector2(-5, 267)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall4" groups=["WALL"]]
 position = Vector2(139, -1)
 rotation = 1.5708
 shape = SubResource("RectangleShape2D_aycpo")
+
+[node name="Sprite2D" type="Sprite2D" parent="Wall4"]
+position = Vector2(141.5, -1)
+scale = Vector2(4.04688, 0.28125)
+texture = SubResource("GradientTexture2D_gc86o")
