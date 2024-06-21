@@ -12,7 +12,7 @@ AI4USharp is the implementation of reinforcement learning algorithms using Torch
 
 # Requirements
 * Godot 4.2.2 Mono Version.
-* TorchSharp-cpu (version >= 0.102)
+* TorchSharp-cpu (version >= 0.102).
 * Tested in Windows 11 or Ubuntu 24.04.
 
 The minimum recommended hardware for AI4U is a computer with at least a GeForce 1050ti (4GB VRAM), 8GB of RAM, and at least 20GB of SSD storage. Naturally, the memory requirement can increase significantly if complex inputs are used in the agent's sensors (such as images) and if algorithms like *Soft-Actor-Critic* (SAC) and DQN are employed. For truly interesting use cases, such as using SAC with an image sensor, a computer with at least 24GB of RAM and a high-end GPU is necessary. For games, we recommend modest sensor configurations, such as moderate use of RayCasting.

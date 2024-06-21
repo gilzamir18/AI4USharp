@@ -42,4 +42,9 @@ public partial class Trainer : Node
 	{
 
 	}
+
+	public virtual bool TrainingFinalized()
+	{
+		return false;
+	}
 }

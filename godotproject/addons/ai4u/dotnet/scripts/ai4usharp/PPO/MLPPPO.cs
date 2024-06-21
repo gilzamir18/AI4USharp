@@ -62,6 +62,19 @@ public class ActorCritic : Module
     {
         return critic.forward(input);
     }
+
+    public void Save(string prefix="model", string path="")
+    {
+        GD.Print(System.IO.Path.Join(path, prefix + "_critic.dat"));
+        actor.save(System.IO.Path.Join(path, prefix + "_actor.dat"));
+        critic.save(System.IO.Path.Join(path, prefix + "_critic.dat"));
+    }
+
+    public void Load(string prefix="model", string path="")
+    {
+        actor.load (System.IO.Path.Join(path, prefix + "_actor.dat"));
+        critic.load(System.IO.Path.Join(path, prefix + "_critic.dat"));
+    }
 }
 
 
@@ -87,6 +100,11 @@ public class MLPPPO
         this.Gamma = gamma;
         this.Lambda = lambda;
         this.inputSize = inputSize;
+    }
+
+    public void Save()
+    {
+        policy.Save();
     }
 
     public  (float criticLoss, float policyLoss) Update(MLPPPOMemory memory)

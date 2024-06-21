@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using TorchSharp;
 using static ai4u.math.AI4UMath;
-
+using TorchSharp.Utils.tensorboard;
+using TorchSharp.Modules;
 namespace ai4u;
 
 public partial class MLPPPOTrainer : Trainer
@@ -39,6 +40,12 @@ public partial class MLPPPOTrainer : Trainer
 	[Export]
 	private int updates = 1;
 
+	[Export]
+	private int maxNumberOfUpdates = 1000;
+
+	[Export]
+	private string logPath = "";
+
 	private MLPPPOMemory memory;
 
 	private int horizonPos = 0;
@@ -63,11 +70,22 @@ public partial class MLPPPOTrainer : Trainer
 	private float episodeCriticLoss = 0;
 	private float episodePolicyLoss = 0;
 
+	private bool modelSaved = false;
+
+	private SummaryWriter summaryWriter;
+	
+
+	public override bool TrainingFinalized()
+	{
+		return totalPolicyUpdates >=  maxNumberOfUpdates;
+	}
+
 	/// <summary>
 	/// Here you allocate extra resources for your specific training loop.
 	/// </summary>
 	public override void OnSetup()
 	{
+		summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "_log");
 		BasicAgent bagent = (BasicAgent) agent;
 		inputName2Idx = new Dictionary<string, int>();
 		outputs = new Dictionary<string, float[]>();
@@ -116,6 +134,7 @@ public partial class MLPPPOTrainer : Trainer
 		memory = new();
 		ppoAlg = new MLPPPO(inputSize, 32, modelOutput.shape[0], clipParam, gamma, lambda, learningRate);
 		ppoAlg.Updates = updates;
+		modelSaved = false;
 	}	
 	
 	///<summary>
@@ -124,6 +143,8 @@ public partial class MLPPPOTrainer : Trainer
 	public override void OnReset(Agent agent)
 	{
 		GD.Print("Episode Reward: " + ((BasicAgent)agent).EpisodeReward);
+		summaryWriter.add_scalar("episode/reward", ((BasicAgent)agent).EpisodeReward, (int)totalPolicyUpdates);
+		GD.Print("Updates: " + totalPolicyUpdates);
 		if (policyUpdatesByEpisode > 0)
 		{
 			GD.Print("Critic Loss: " + episodeCriticLoss/policyUpdatesByEpisode);
@@ -151,12 +172,19 @@ public partial class MLPPPOTrainer : Trainer
 		CollectData();
 		float criticLoss = 0;
 		float policyLoss = 0;
-		if (horizonPos >= horizon)
+		if ( (horizonPos >= horizon || !agent.Alive()) && !TrainingFinalized())
 		{
 			(criticLoss, policyLoss) = ppoAlg.Update(memory);
+			summaryWriter.add_scalar("critic/loss", criticLoss, (int)totalPolicyUpdates);
+			summaryWriter.add_scalar("policy/loss", policyLoss, (int)totalPolicyUpdates);
 			memory.Clear();
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
+			if (!modelSaved && TrainingFinalized())
+			{
+				modelSaved = true;
+				ppoAlg.Save();
+			}
 		} else if (memory.actions.Count > 0 && ended)
 		{
 			(criticLoss, policyLoss) = ppoAlg.Update(memory);

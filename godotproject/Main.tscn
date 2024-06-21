@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://qwn7lq4qmfiy"]
+[gd_scene load_steps=24 format=3 uid="uid://qwn7lq4qmfiy"]
 
 [ext_resource type="Script" path="res://AgentBody.cs" id="1_ronsf"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/agents/BasicAgent.cs" id="1_vt1q8"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/TouchRewardFunc2D.cs" id="7_k3qe6"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/MLPPPOTrainer.cs" id="8_54m80"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/TrainController.cs" id="8_b3iyv"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/MLPPPOController.cs" id="10_bqlc2"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/GroupTouchRewardFunc2D.cs" id="10_yo41t"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dcnmv"]
@@ -103,13 +104,9 @@ reward = 10.0
 target = NodePath("../../../Target")
 causeEpisodeToEnd = true
 
-[node name="PPOTrainer" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("8_54m80")
-horizon = 51
-
 [node name="TrainerController" type="Node" parent="AgentBody/Agent"]
 script = ExtResource("8_b3iyv")
-trainerPath = NodePath("../PPOTrainer")
+trainerPath = NodePath("../../../PPOTrainer")
 tryInitialize = true
 
 [node name="WallCollisionReward" type="Node" parent="AgentBody/Agent"]
@@ -118,10 +115,19 @@ reward = -10.0
 group = "WALL"
 causeEpisodeToEnd = true
 
+[node name="ModelController" type="Node" parent="AgentBody/Agent"]
+script = ExtResource("10_bqlc2")
+tryInitialize = true
+
 [node name="Sprite2D" type="Sprite2D" parent="AgentBody"]
 position = Vector2(1.08173, 16.6667)
 scale = Vector2(0.274189, 0.651042)
 texture = SubResource("GradientTexture2D_eskxy")
+
+[node name="PPOTrainer" type="Node" parent="."]
+script = ExtResource("8_54m80")
+horizon = 51
+maxNumberOfUpdates = 2000
 
 [node name="Target" type="StaticBody2D" parent="."]
 modulate = Color(0.7, 0, 0.0116665, 1)
@@ -136,7 +142,6 @@ texture = SubResource("GradientTexture2D_urjle")
 
 [node name="ControlRequestor" type="Node" parent="." node_paths=PackedStringArray("agentsList")]
 script = ExtResource("6_g4j3j")
-defaultTimeScale = 10.0
 agentsList = [NodePath("../AgentBody/Agent")]
 
 [node name="AgentPosition" type="Node2D" parent="."]
