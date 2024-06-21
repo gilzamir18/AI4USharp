@@ -25,7 +25,7 @@ namespace ai4u {
 		[Export]
 		public string floorGroup = "Floor";
 
-		private BasicAgent agent;
+		private Agent agent;
 		
 		private RigidBody3D rBody;
 		private PhysicsDirectSpaceState3D spaceState;
@@ -44,7 +44,7 @@ namespace ai4u {
 			isContinuous = true;
 			rangeMin = new float[]{0, -1, 0, 0};
 			rangeMax = new float[]{1, 1, 1, 1};
-			this.agent = (BasicAgent) agent;
+			this.agent = agent;
 			agent.AddResetListener(this);
 			rBody = this.agent.GetAvatarBody() as RigidBody3D;
 			this.spaceState = rBody.GetWorld3D().DirectSpaceState;

@@ -38,7 +38,6 @@ public partial class MLPPPOController : Controller
 
 	override public void OnSetup()
 	{		
-		BasicAgent bagent = (BasicAgent) agent;
 		inputName2Idx = new Dictionary<string, int>();
 		outputs = new Dictionary<string, float[]>();
 		metadata = agent.Metadata;
@@ -52,21 +51,21 @@ public partial class MLPPPOController : Controller
 			}
 		}
 
-		for (int i = 0; i < bagent.Sensors.Count; i++)
+		for (int i = 0; i < agent.Sensors.Count; i++)
 		{
-			if (bagent.Sensors[i].GetKey() == "reward")
+			if (agent.Sensors[i].GetKey() == "reward")
 			{
 				rewardIdx = i;
-			} else if (bagent.Sensors[i].GetKey() == "done")
+			} else if (agent.Sensors[i].GetKey() == "done")
 			{
 				doneIdx = i;
 			}
 			for (int j = 0; j < metadata.inputs.Length; j++)
 			{
-				if (bagent.Sensors[i].GetName() == metadata.inputs[j].name)
+				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
 				{
 					if (metadata.inputs[j].name == null)
-						throw new Exception($"Perception key of the sensor {bagent.Sensors[i].GetType()} cannot be null!");
+						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
 					inputName2Idx[metadata.inputs[j].name] = i;
 					inputSize = metadata.inputs[i].shape[0];
 					numberOfSensors ++;	
@@ -103,7 +102,7 @@ public partial class MLPPPOController : Controller
 			}
 			return ai4u.Utils.ParseAction("__noop__");			
 		}
-		if (cmdName != null && !((BasicAgent)agent).Done )
+		if (cmdName != null && !agent.Done )
 		{
 			if (iargs != null) 
 			{

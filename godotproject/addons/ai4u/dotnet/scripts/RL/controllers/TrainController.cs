@@ -53,7 +53,7 @@ public partial class TrainController : Controller
 			}
 			return ai4u.Utils.ParseAction("__noop__");			
 		}
-		if (cmdName != null && !((BasicAgent)agent).Done )
+		if (cmdName != null && !(agent).Done )
 		{
 			if (iargs != null) 
 			{

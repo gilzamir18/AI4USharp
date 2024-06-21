@@ -13,7 +13,7 @@ public partial class ExportAgentMetadata : Node
 	/// Selected agent.
 	/// </summary>
 	[Export]
-	private BasicAgent agent;
+	private Agent agent;
 
 
 	/// <summary>
@@ -38,7 +38,7 @@ public partial class ExportAgentMetadata : Node
 
 	public void OnReset(Agent agent)
 	{
-		string content =  ((BasicAgent) agent).GetMetadataAsJson();
+		string content =  agent.GetMetadataAsJson();
 		File.WriteAllText(filePath, content);
 	}
 }

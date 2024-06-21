@@ -16,7 +16,7 @@ public partial class RBMoveActuator2D : Actuator
     [Export]
     public float minActivityThreshold = 0.001f;
 
-    private BasicAgent agent;
+    private Agent agent;
 
     private RigidBody2D rBody;
 
@@ -26,7 +26,7 @@ public partial class RBMoveActuator2D : Actuator
         isContinuous = true;
         rangeMin = new float[] { 0, -1, 0, 0 };
         rangeMax = new float[] { 1, 1, 1, 1 };
-        this.agent = (BasicAgent)agent;
+        this.agent = agent;
         agent.AddResetListener(this);
         rBody = this.agent.GetAvatarBody() as RigidBody2D;
     }

@@ -54,11 +54,11 @@ namespace ai4u
         private Node target;
 
 
-        private BasicAgent agent;
+        private Agent agent;
 
         public override void OnSetup(Agent agent)
         {
-            this.agent = (BasicAgent) agent;
+            this.agent =  agent;
             this.target = GetNode(targetPath);
             acmReward = 0;
         }

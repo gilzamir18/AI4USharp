@@ -35,7 +35,7 @@ public partial class ScreenSensor : Sensor
     public override void OnSetup(Agent agent)
     {
         MakeData();
-        this.agent = (BasicAgent)agent;
+        this.agent = agent;
         rangeMin = 0;
         rangeMax = 255;
     }

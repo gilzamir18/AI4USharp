@@ -13,6 +13,10 @@ namespace ai4u
     public abstract partial class Controller: Node
 	{
 		
+
+		[Export]
+		public bool Enabled = true;
+
 		public int LastStep {get; set;}
 		public float LastReward {get; set;}
 		

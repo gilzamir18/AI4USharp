@@ -46,20 +46,20 @@ namespace ai4u
 				nodeRef = GetNode(respawnOptionsPath);
 				children = nodeRef.GetChildren();
 				isOutput = false;
-				cBody = ( (BasicAgent) agent).GetAvatarBody() as CharacterBody2D;
+				cBody = (agent).GetAvatarBody() as CharacterBody2D;
 
 				if (early)
 				{
-					((BasicAgent)agent).OnResetStart += HandleReset;
+					(agent).OnResetStart += HandleReset;
 				}
 				else
 				{
-					((BasicAgent)agent).OnEpisodeStart += HandleReset;
+					(agent).OnEpisodeStart += HandleReset;
 				}
 			
 			}
 			
-			public void HandleReset(BasicAgent agent)
+			public void HandleReset(Agent agent)
 			{
 				Transform2D reference;
 				if (children.Count > 0)

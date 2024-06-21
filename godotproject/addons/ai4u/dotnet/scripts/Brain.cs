@@ -14,7 +14,7 @@ namespace ai4u;
 /// network protocols. A local controller can be used to adapt the use of a trained model 
 /// using a remote controller. This is a possible scenario given that there are many algorithms
 ///and frameworks that they are easier for prototyping than with a Unity language.</summary>
-public abstract class Brain
+public class Brain
 {
 	public static byte FLOAT = 0;
 	public static byte INT = 1;
@@ -31,11 +31,13 @@ public abstract class Brain
 	protected string[] receivedargs;
 
 	private Dictionary<string, string[]> commandFields;
+
+	public Controller Controller {get; }
 	
-	public virtual void Setup(Agent agent)
+	public Brain(Controller ctrl)
 	{
-		
-	}
+		this.Controller = ctrl;
+	}	
 
 	public virtual void Close()
 	{
@@ -76,12 +78,7 @@ public abstract class Brain
 		return receivedcmd;
 	}
 
-	public virtual void OnStepReward(int step, float reward)
-	{
-		
-	}
-
-	public string[] GetReceivedArgs(string cmd=null)
+	public virtual string[] GetReceivedArgs(string cmd=null)
 	{
 		if (cmd == null)
 		{
@@ -93,8 +90,33 @@ public abstract class Brain
 		}
 	}
 	
+	public virtual void Setup(Agent agent)
+	{
+		this.agent = agent;
+		if (this.Controller != null)
+		{
+			this.Controller.Setup(agent);
+		}
+		else
+		{
+			throw new System.Exception("LocalBrain is without a controller. Add a valid controller to LocalBrain for fix this error!");
+		}
+	}
+	
 	public virtual void OnReset(Agent agent)
 	{
-		
+		this.Controller.OnReset(agent);
+	}
+
+	public virtual void OnStepReward(int step, float reward)
+	{
+		this.Controller.LastStep = step;
+		this.Controller.LastReward = reward;
+	}
+
+	public virtual string SendMessage(string[] desc, byte[] tipo, string[] valor)
+	{
+		this.Controller.ReceiveState(desc, tipo, valor);
+		return this.Controller.GetAction();
 	}
 }

@@ -39,20 +39,20 @@ namespace ai4u
 			{
 				nodeRef = GetNode(respawnOptionsPath);
 				children = nodeRef.GetChildren();
-				rBody = ( (BasicAgent) agent).GetAvatarBody() as RigidBody3D;
+				rBody = (agent).GetAvatarBody() as RigidBody3D;
 
 				if (early)
 				{
-					((BasicAgent)agent).OnResetStart += HandleReset;
+					(agent).OnResetStart += HandleReset;
 				}
 				else
 				{
-					((BasicAgent)agent).OnEpisodeStart += HandleReset;
+					(agent).OnEpisodeStart += HandleReset;
 				}
 			
 			}
 			
-			public void HandleReset(BasicAgent agent)
+			public void HandleReset(Agent agent)
 			{
 				Transform3D reference;
 				if (children.Count > 0)

@@ -86,7 +86,6 @@ public partial class MLPPPOTrainer : Trainer
 	public override void OnSetup()
 	{
 		summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "_log");
-		BasicAgent bagent = (BasicAgent) agent;
 		inputName2Idx = new Dictionary<string, int>();
 		outputs = new Dictionary<string, float[]>();
 		metadata = agent.Metadata;
@@ -100,21 +99,21 @@ public partial class MLPPPOTrainer : Trainer
 			}
 		}
 
-		for (int i = 0; i < bagent.Sensors.Count; i++)
+		for (int i = 0; i < agent.Sensors.Count; i++)
 		{
-			if (bagent.Sensors[i].GetKey() == "reward")
+			if (agent.Sensors[i].GetKey() == "reward")
 			{
 				rewardIdx = i;
-			} else if (bagent.Sensors[i].GetKey() == "done")
+			} else if (agent.Sensors[i].GetKey() == "done")
 			{
 				doneIdx = i;
 			}
 			for (int j = 0; j < metadata.inputs.Length; j++)
 			{
-				if (bagent.Sensors[i].GetName() == metadata.inputs[j].name)
+				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
 				{
 					if (metadata.inputs[j].name == null)
-						throw new Exception($"Perception key of the sensor {bagent.Sensors[i].GetType()} cannot be null!");
+						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
 					inputName2Idx[metadata.inputs[j].name] = i;
 					inputSize = metadata.inputs[i].shape[0];
 					numberOfSensors ++;	
@@ -142,8 +141,8 @@ public partial class MLPPPOTrainer : Trainer
 	///</summary>
 	public override void OnReset(Agent agent)
 	{
-		GD.Print("Episode Reward: " + ((BasicAgent)agent).EpisodeReward);
-		summaryWriter.add_scalar("episode/reward", ((BasicAgent)agent).EpisodeReward, (int)totalPolicyUpdates);
+		GD.Print("Episode Reward: " + agent.EpisodeReward);
+		summaryWriter.add_scalar("episode/reward", agent.EpisodeReward, (int)totalPolicyUpdates);
 		GD.Print("Updates: " + totalPolicyUpdates);
 		if (policyUpdatesByEpisode > 0)
 		{

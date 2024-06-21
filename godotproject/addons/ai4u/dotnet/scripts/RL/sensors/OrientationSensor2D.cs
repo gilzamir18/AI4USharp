@@ -91,7 +91,7 @@ namespace ai4u {
 		public InfoType Info => info;
 
 		public override void OnSetup(Agent agent) {
-			this.agent = (BasicAgent)agent;
+			this.agent = agent;
 
 			if (reference == null) {
 				reference = this.agent.GetAvatarBody() as Node2D;

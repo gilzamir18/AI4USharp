@@ -36,7 +36,7 @@ namespace ai4u
 		}
 	}
 
-	public partial class ControlRequestor : Node
+	public partial class LoopController : Node
 	{
 		[Export] private float defaultTimeScale = 1.0f; 
 		[Export] private bool physicsMode = true;
@@ -88,14 +88,7 @@ namespace ai4u
 		public Command[] RequestEnvControl(Agent agent, RequestCommand request)
 		{
 			string cmdstr = null;
-			if (agent.Brain is LocalBrain)
-			{
-				cmdstr = ((LocalBrain) (agent.Brain)).SendMessage(request.Command, request.Type, request.Value);
-			}
-			else
-			{
-				cmdstr = SendMessageFrom((RemoteBrain)agent.Brain, request.Command, request.Type, request.Value);
-			}
+			cmdstr = (agent.Brain).SendMessage(request.Command, request.Type, request.Value);
 			
 			if (cmdstr != null)
 			{
@@ -111,17 +104,8 @@ namespace ai4u
 		{
 			agent.UpdateState();
 			string cmdstr = null;
-			if (agent.Brain is LocalBrain)
-			{
-				cmdstr = ((LocalBrain) (agent.Brain)).SendMessage(agent.MessageID, agent.MessageType, agent.MessageValue);
-				agent.ResetCommandBuffer();
-			}
-			else
-			{
-
-				cmdstr = SendMessageFrom((RemoteBrain)agent.Brain, agent.MessageID, agent.MessageType, agent.MessageValue);
-				agent.ResetCommandBuffer();
-			}
+			cmdstr = agent.Brain.SendMessage(agent.MessageID, agent.MessageType, agent.MessageValue);
+			agent.ResetCommandBuffer();
 
 			if (cmdstr != null)
 			{
@@ -264,7 +248,6 @@ namespace ai4u
 						ctrl.applyingAction = true;
 						ctrl.frameCounter = 1;
 						agent.ResetReward();
-						agent.BeginOfStep();
 						agent.ApplyAction();
 						if (!agent.Alive())
 						{
@@ -388,48 +371,6 @@ namespace ai4u
 					agent.AgentReset();
 				}
 			}
-		}
-
-		/// <summary>
-		/// Sends a message to the customer in the following format:
-		/// [numberofields] [[descsize] [desc] [type] [valorsize] [value]] +
-		/// where desc is a description of the message, type is the type of the message given as an integer such that:
-		/// 0 = float
-		/// 1 = int
-		/// 2 = boolean
-		/// 3 = string
-		/// 4 = byte array
-		/// 5 = float array
-		/// 6 = int array
-		/// 7 = string array
-		/// @return the value of the information sent.
-		/// </summary>
-		public string SendMessageFrom(RemoteBrain rbrain, string[] desc, byte[] tipo, string[] valor)
-		{
-			StringBuilder sb = new StringBuilder();
-			int numberoffields = desc.Length;
-			sb.Append(numberoffields.ToString().PadLeft(4,' ').PadRight(4, ' '));
-
-			for (int i = 0; i < desc.Length; i++)
-			{
-				StringBuilder field = new StringBuilder();
-				int descsize = Encoding.UTF8.GetByteCount(desc[i]);
-				field.Append(descsize.ToString().PadLeft(4, ' ').PadRight(4,' '));
-				field.Append(desc[i]);
-				field.Append((int)tipo[i]);
-				field.Append(Encoding.UTF8.GetByteCount(valor[i]).ToString().PadLeft(8, ' ').PadRight(8, ' '));
-				field.Append(valor[i]);
-				string fstr = field.ToString();
-				sb.Append(fstr);
-			}
-			byte[] b = Encoding.UTF8.GetBytes(sb.ToString());
-			byte[] received = new byte[1000];
-			int total = 0;
-			if (rbrain.sendData(b, out total, received))
-			{
-				return Encoding.UTF8.GetString(received);
-			}
-			return null;
 		}
 	}
 }
