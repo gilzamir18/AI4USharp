@@ -1,7 +1,9 @@
 using System.Text;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Godot;
+
 
 namespace ai4u
 {
@@ -159,7 +161,7 @@ namespace ai4u
 
 		}
 
-		private static float ParseFloat(string v) {
+		public static float ParseFloat(string v) {
 			return float.Parse(v, System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
 		}
 
@@ -181,6 +183,29 @@ namespace ai4u
 		public float[] GetActionArgAsFloatArray(string arg)
 		{
 			return System.Array.ConvertAll(arg.Split(';'), ParseFloat);
+		}
+
+		public static Dictionary<string, string> LoadProperties(string filePath)
+		{
+			Dictionary<string, string> properties = new();
+			if (!File.Exists(filePath))
+			{
+				GD.PrintErr("Properties file not found: " + filePath);
+				return null;
+			}
+
+			var lines = File.ReadAllLines(filePath);
+			foreach (var line in lines)
+			{
+				if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+
+				var parts = line.Split('=');
+				if (parts.Length == 2)
+				{
+					properties[parts[0].Trim()] = parts[1].Trim();
+				}
+			}
+			return properties;
 		}
 
 		public static string ParseAction(string actionName, float[] args)
@@ -287,6 +312,7 @@ namespace ai4u
 
         public int Count => queue.Count;
     }
+
 
     public partial class HistoryStack<T>
 	{

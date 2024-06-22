@@ -15,6 +15,14 @@ run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.2", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+MLPPPOAsyncPlugin="*res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPOAsyncSingleton.cs"
+
 [dotnet]
 
 project/assembly_name="AI4USharp"
+
+[editor_plugins]
+
+enabled=PackedStringArray()

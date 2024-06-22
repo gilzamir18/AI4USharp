@@ -1,5 +1,6 @@
-[gd_scene load_steps=24 format=3 uid="uid://qwn7lq4qmfiy"]
+[gd_scene load_steps=26 format=3 uid="uid://qwn7lq4qmfiy"]
 
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPO.cs" id="1_82h8a"]
 [ext_resource type="Script" path="res://AgentBody.cs" id="1_ronsf"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/Agent.cs" id="2_721ef"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/DiscretActuator.cs" id="2_mp8v8"]
@@ -12,6 +13,7 @@
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/MLPPPOController.cs" id="10_bqlc2"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/GroupTouchRewardFunc2D.cs" id="10_yo41t"]
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/LoopController.cs" id="11_g2c2g"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/MLPPPOTrainerAsync.cs" id="13_5kljx"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dcnmv"]
 size = Vector2(20, 52)
@@ -67,6 +69,11 @@ position = Vector2(0, 16)
 shape = SubResource("RectangleShape2D_dcnmv")
 debug_color = Color(0.896528, 0.180237, 0, 0.42)
 
+[node name="Sprite2D" type="Sprite2D" parent="AgentBody"]
+position = Vector2(1.08173, 16.6667)
+scale = Vector2(0.274189, 0.651042)
+texture = SubResource("GradientTexture2D_eskxy")
+
 [node name="Agent" type="Node" parent="AgentBody"]
 script = ExtResource("2_721ef")
 doneAtNegativeReward = false
@@ -106,11 +113,12 @@ causeEpisodeToEnd = true
 script = ExtResource("8_b3iyv")
 trainerPath = NodePath("../PPOTrainer")
 tryInitialize = true
-Enabled = false
 
-[node name="ModelController" type="Node" parent="AgentBody/Agent"]
+[node name="ModelController" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
 script = ExtResource("10_bqlc2")
 tryInitialize = true
+model = NodePath("")
+Enabled = false
 
 [node name="WallCollisionReward" type="Node" parent="AgentBody/Agent"]
 script = ExtResource("10_yo41t")
@@ -118,15 +126,20 @@ reward = -10.0
 group = "WALL"
 causeEpisodeToEnd = true
 
-[node name="PPOTrainer" type="Node" parent="AgentBody/Agent"]
+[node name="PPOTrainer" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
 script = ExtResource("8_54m80")
+model = NodePath("../AgentModel")
 horizon = 51
 maxNumberOfUpdates = 2000
 
-[node name="Sprite2D" type="Sprite2D" parent="AgentBody"]
-position = Vector2(1.08173, 16.6667)
-scale = Vector2(0.274189, 0.651042)
-texture = SubResource("GradientTexture2D_eskxy")
+[node name="PPOTrainerAsync" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
+script = ExtResource("13_5kljx")
+horizon = 51
+maxNumberOfUpdates = 2000
+model = NodePath("../AgentModel")
+
+[node name="AgentModel" type="Node" parent="AgentBody/Agent"]
+script = ExtResource("1_82h8a")
 
 [node name="Target" type="StaticBody2D" parent="."]
 modulate = Color(0.7, 0, 0.0116665, 1)
@@ -141,6 +154,7 @@ texture = SubResource("GradientTexture2D_urjle")
 
 [node name="LoopController" type="Node" parent="." node_paths=PackedStringArray("agentsList")]
 script = ExtResource("11_g2c2g")
+defaultTimeScale = 10.0
 agentsList = [NodePath("../AgentBody/Agent")]
 
 [node name="AgentPosition" type="Node2D" parent="."]

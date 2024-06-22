@@ -75,7 +75,7 @@ namespace ai4u
 				}
                 cBody.Velocity = Vector2.Zero;
 				cBody.Rotation = reference.Rotation;
-                cBody.Position = reference.Origin;
+                cBody.GlobalPosition = reference.Origin;
 				if (randomize)
 				{
 					if (flipWhenTurn)

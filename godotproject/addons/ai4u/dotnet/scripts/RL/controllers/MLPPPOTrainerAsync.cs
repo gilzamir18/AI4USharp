@@ -3,15 +3,11 @@ using System;
 using System.Collections.Generic;
 using TorchSharp;
 using static ai4u.math.AI4UMath;
-using TorchSharp.Utils.tensorboard;
 using TorchSharp.Modules;
 namespace ai4u;
 
-public partial class MLPPPOTrainer : Trainer
+public partial class MLPPPOTrainerAsync : Trainer
 {
-	[Export]
-	private MLPPPO model;
-
 	/// <summary>
 	/// If true, episode is restarted after ending.
 	/// </summary>
@@ -25,7 +21,10 @@ public partial class MLPPPOTrainer : Trainer
 	private int maxNumberOfUpdates = 1000;
 
 	[Export]
-	private string logPath = "";
+	private string mainOutput = "move";
+
+	[Export]
+	private MLPPPO model;
 
 	private MLPPPOMemory memory;
 
@@ -46,8 +45,22 @@ public partial class MLPPPOTrainer : Trainer
 
 	private bool modelSaved = false;
 
-	private SummaryWriter summaryWriter;
 	
+	private Dictionary<string, int> inputName2Idx; //mapping sensor name to sensor index.
+	private Dictionary<string, float[]> outputs; //mapping model output name to output value.
+	private ModelOutput modelOutput; //output metadata.
+
+	private int rewardIdx = -1;
+	private int doneIdx = -1;
+
+	private int outputSize;
+	private int inputSize;
+
+	private long globalSteps = 0;
+
+    private MLPPPOAsyncSingleton asyncPlugin;
+
+	private SummaryWriter summaryWriter;
 
 	public override bool TrainingFinalized()
 	{
@@ -59,17 +72,61 @@ public partial class MLPPPOTrainer : Trainer
 	/// </summary>
 	public override void OnSetup()
 	{
-		summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "_log");
+		summaryWriter = torch.utils.tensorboard.SummaryWriter("", "reward_log");
+        asyncPlugin = GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncPlugin");
+		if (asyncPlugin == null)
+        {
+            GD.PrintErr("MLPPPOAsyncSingleton must be configured in your Godot project as an autoload!!!");
+        }
 		metadata = agent.Metadata;
+		outputs = new();
+		inputName2Idx = new();
+		
+    	for (int o = 0; o < metadata.outputs.Length; o++)
+		{
+			var output = metadata.outputs[o];
+			outputs[output.name] = new float[output.shape[0]];
+			if (output.name == mainOutput)
+			{
+				modelOutput = output;
+                outputSize = output.shape[0];
+			}
+		}
+
+		for (int i = 0; i < agent.Sensors.Count; i++)
+		{
+			if (agent.Sensors[i].GetKey() == "reward")
+			{
+				rewardIdx = i;
+			} else if (agent.Sensors[i].GetKey() == "done")
+			{
+				doneIdx = i;
+			}
+			for (int j = 0; j < metadata.inputs.Length; j++)
+			{
+				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
+				{
+					if (metadata.inputs[j].name == null)
+						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
+					inputName2Idx[metadata.inputs[j].name] = i;
+					inputSize = metadata.inputs[i].shape[0];
+				}
+			}
+		}
+
+		if (metadata.inputs.Length == 1)
+		{
+			isSingleInput = true;
+		}
+		else
+		{
+			isSingleInput = false;
+			throw new System.Exception("Only one input is supported!!!");
+		}
+		
 		memory = new();
 		modelSaved = false;
-		if (model.algorithm == null)
-		{
-			var alg = new MLPPPOAlgorithm();
-			AddChild(alg);
-			model.algorithm = alg;
-		}
-	}	
+	}
 	
 	///<summary>
 	/// Here you get agent life cicle callback about episode resetting.
@@ -79,11 +136,6 @@ public partial class MLPPPOTrainer : Trainer
 		GD.Print("Episode Reward: " + agent.EpisodeReward);
 		summaryWriter.add_scalar("episode/reward", agent.EpisodeReward, (int)totalPolicyUpdates);
 		GD.Print("Updates: " + totalPolicyUpdates);
-		if (policyUpdatesByEpisode > 0)
-		{
-			GD.Print("Critic Loss: " + episodeCriticLoss/policyUpdatesByEpisode);
-			GD.Print("Policy Loss: " + episodePolicyLoss/policyUpdatesByEpisode);
-		}
 		policyUpdatesByEpisode = 0;
 		ended = false;
 		horizonPos = 0;
@@ -108,26 +160,22 @@ public partial class MLPPPOTrainer : Trainer
 		float policyLoss = 0;
 		if ( (horizonPos >= horizon || !agent.Alive()) && !TrainingFinalized())
 		{
-			(criticLoss, policyLoss) =  model.algorithm.Update(model, memory);
-			summaryWriter.add_scalar("critic/loss", criticLoss, (int)totalPolicyUpdates);
-			summaryWriter.add_scalar("policy/loss", policyLoss, (int)totalPolicyUpdates);
-			memory.Clear();
+            asyncPlugin.PutSample("sample", model, memory);
+			memory = new MLPPPOMemory();
+			horizonPos = 0;
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
-			if (!modelSaved && TrainingFinalized())
-			{
-				modelSaved = true;
-				model.Save();
-			}
 		} else if (memory.actions.Count > 0 && ended)
 		{
-			(criticLoss, policyLoss) = model.algorithm.Update(model, memory);
-			memory.Clear();
+            asyncPlugin.PutSample("sample", model, memory);
+			horizonPos = 0;
+			memory = new MLPPPOMemory();
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
 		}
 		episodeCriticLoss += criticLoss;
 		episodePolicyLoss += policyLoss;
+		globalSteps++;
 	}
 	/// <summary>
 	/// This method gets state from sensor named <code>name</code> and returns its value as an array of float-point numbers.
@@ -136,7 +184,7 @@ public partial class MLPPPOTrainer : Trainer
 	/// <returns>float[]: sensor value</returns>
 	private float[] GetInputAsArray(string name)
 	{
-		return controller.GetStateAsFloatArray(model.GetInputIdx(name));
+		return controller.GetStateAsFloatArray(inputName2Idx[name]);
 	}
 
 	public override void EnvironmentMessage()
@@ -150,18 +198,18 @@ public partial class MLPPPOTrainer : Trainer
 
 	private void CollectData()
 	{
-		var reward = controller.GetStateAsFloat(model.RewardIndex);
-		var done = controller.GetStateAsBool(model.DoneIndex);
+		var reward = controller.GetStateAsFloat(rewardIdx);
+		var done = controller.GetStateAsBool(doneIdx);
 
 		var nextState = GetNextState();
 		if ( state is null)
 		{
 			state = GetNextState();
 		}
-		var y = model.SelectAction(state.view(-1, model.InputSize));
+		var y = model.SelectAction(state.view(-1, inputSize));
 		long action = y.data<long>()[0];
 
-		controller.RequestAction(model.MainOutputName, new int[]{ (int)action});
+		controller.RequestAction(mainOutput, new int[]{ (int)action});
 		
 		memory.actions.Add(y.detach());
 		memory.states.Add(state.detach());

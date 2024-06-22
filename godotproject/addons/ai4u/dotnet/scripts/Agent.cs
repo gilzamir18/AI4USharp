@@ -133,6 +133,8 @@ public partial class Agent : Node
 	/// </summary>
 	public event AgentEpisodeHandler OnAgentStart;
 
+	public event AgentEpisodeHandler OnSetupDone;
+
 	protected LoopController controlRequestor {get;set;}
 	
 	public AgentControlInfo ControlInfo {get; set;}
@@ -612,6 +614,10 @@ public partial class Agent : Node
 			throw new System.Exception("ai4u2unity connection error!");
 		}
 		setupIsDone = true;
+		if (OnSetupDone != null)
+		{
+			OnSetupDone(this);
+		}
 	}
 
 	/// <summary>

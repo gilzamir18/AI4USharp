@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3 uid="uid://4iqekg3amlyh"]
+
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPO.cs" id="1_hr4op"]
+[ext_resource type="PackedScene" uid="uid://qwn7lq4qmfiy" path="res://Main.tscn" id="2_hnjun"]
+
+[node name="MainAsync" type="Node2D"]
+
+[node name="SharedModel" type="Node" parent="."]
+script = ExtResource("1_hr4op")
+shared = true
+
+[node name="Node" type="Node" parent="."]
+
+[node name="Main" parent="Node" instance=ExtResource("2_hnjun")]
+
+[node name="TrainerController" parent="Node/Main/AgentBody/Agent" index="5"]
+trainerPath = NodePath("../PPOTrainerAsync")
+
+[node name="Main2" parent="Node" instance=ExtResource("2_hnjun")]
+position = Vector2(325, 0)
+
+[node name="TrainerController" parent="Node/Main2/AgentBody/Agent" index="5"]
+trainerPath = NodePath("../PPOTrainerAsync")
+
+[editable path="Node/Main"]
+[editable path="Node/Main2"]

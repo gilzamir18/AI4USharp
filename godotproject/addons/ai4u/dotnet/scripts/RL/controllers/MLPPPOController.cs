@@ -13,76 +13,20 @@ public partial class MLPPPOController : Controller
 	[Export]
 	public bool tryInitialize = false;
 
-    [Export]
-	private string mainOutput = "move";
+	[Export]
+	public MLPPPO model;
 
 	private string cmdName = null;
 	private float[] fargs = null;
 	private int[] iargs = null;
 	private bool initialized = false; //indicates if episode has been initialized.
 
-	private ActorCritic model;
 	private ModelMetadata metadata; //Metadata of the input and outputs of the agent decision making. 
-	private bool isSingleInput = true; //Flag indicating if agent has single sensor or multiple sensors.
-	private Dictionary<string, int> inputName2Idx; //mapping sensor name to sensor index.
-	private Dictionary<string, float[]> outputs; //mapping model output name to output value.
-	private ModelOutput modelOutput; //output metadata.
 
-
-	private int inputSize;
-
-	private int rewardIdx = -1;
-	private int doneIdx = -1;
-
-	private int numberOfSensors = 0;
 
 	override public void OnSetup()
 	{		
-		inputName2Idx = new Dictionary<string, int>();
-		outputs = new Dictionary<string, float[]>();
 		metadata = agent.Metadata;
-		for (int o = 0; o < metadata.outputs.Length; o++)
-		{
-			var output = metadata.outputs[o];
-			outputs[output.name] = new float[output.shape[0]];
-			if (output.name == mainOutput)
-			{
-				modelOutput = output;
-			}
-		}
-
-		for (int i = 0; i < agent.Sensors.Count; i++)
-		{
-			if (agent.Sensors[i].GetKey() == "reward")
-			{
-				rewardIdx = i;
-			} else if (agent.Sensors[i].GetKey() == "done")
-			{
-				doneIdx = i;
-			}
-			for (int j = 0; j < metadata.inputs.Length; j++)
-			{
-				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
-				{
-					if (metadata.inputs[j].name == null)
-						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
-					inputName2Idx[metadata.inputs[j].name] = i;
-					inputSize = metadata.inputs[i].shape[0];
-					numberOfSensors ++;	
-				}
-			}
-		}
-
-		if (metadata.inputs.Length == 1)
-		{
-			isSingleInput = true;
-		}
-		else
-		{
-			isSingleInput = false;
-			throw new System.Exception("Only one input is supported!!!");
-		}
-		model = new ActorCritic(inputSize, 32, modelOutput.shape[0]);
 		model.Load();
 	}
 	
@@ -152,24 +96,17 @@ public partial class MLPPPOController : Controller
 		} else
 		{
 			var state = GetNextState();
-			var action = SelectAction(state.view(-1, inputSize));
-			cmdName = mainOutput;
+			var action = model.SelectAction(state.view(-1, model.InputSize));
+			cmdName = model.MainOutputName;
 			iargs = new int[]{(int)action.data<long>()[0]};
 		}
 
 	}
 	
-	
-    public torch.Tensor SelectAction(torch.Tensor state)
-    {
-        var actionProbs = model.Act(state);
-        var action = torch.multinomial(actionProbs, 1);
-        return action;
-    }
 
 	private float[] GetInputAsArray(string name)
 	{
-		return GetStateAsFloatArray(inputName2Idx[name]);
+		return GetStateAsFloatArray( model.GetInputIdx(name) );
 	}
 
 	
