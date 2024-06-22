@@ -11,9 +11,7 @@ AI4USharp is the implementation of reinforcement learning  using TorchSharp. The
 
 # Demo
 
-[![Async PPO Demo](https://i.stack.imgur.com/Vp2cE.png)](https://youtu.be/-MpY9sz1IN0)
-
-
+[![Watch the video](https://img.youtube.com/vi/-MpY9sz1IN0/0.jpg)](https://www.youtube.com/watch?v=-MpY9sz1IN0)
 
 # Requirements
 * Godot 4.2.2 Mono Version.
