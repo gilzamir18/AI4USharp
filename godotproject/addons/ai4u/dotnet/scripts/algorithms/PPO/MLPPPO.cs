@@ -243,6 +243,7 @@ public partial class MLPPPO: Node
             optimizer = torch.optim.Adam(policy.parameters(), algorithm.LearningRate);
         }
         dataLoaded = true;
+        OnDataLoaded();
     }
 
     public void Save()

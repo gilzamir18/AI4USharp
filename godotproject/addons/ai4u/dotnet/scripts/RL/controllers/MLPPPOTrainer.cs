@@ -149,15 +149,17 @@ public partial class MLPPPOTrainer : Trainer
 	private static bool ended = false;
 
 	private void CollectData()
-	{
-		var reward = controller.GetStateAsFloat(model.RewardIndex);
-		var done = controller.GetStateAsBool(model.DoneIndex);
-
-		var nextState = GetNextState();
+	{	
 		if ( state is null)
 		{
 			state = GetNextState();
 		}
+		
+		var reward = controller.GetStateAsFloat(model.RewardIndex);
+		var done = controller.GetStateAsBool(model.DoneIndex);
+
+		var nextState = GetNextState();
+
 		var y = model.SelectAction(state.view(-1, model.InputSize));
 		long action = y.data<long>()[0];
 

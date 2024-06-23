@@ -21,6 +21,7 @@ public partial class MLPPPOController : Controller
 	private int[] iargs = null;
 	private bool initialized = false; //indicates if episode has been initialized.
 
+	private torch.Tensor state;
 	private ModelMetadata metadata; //Metadata of the input and outputs of the agent decision making. 
 
 
@@ -32,7 +33,8 @@ public partial class MLPPPOController : Controller
 	
 	override public void OnReset(Agent agent)
 	{
-
+		GD.Print("Episode Reward: " + agent.EpisodeReward);
+		state = GetNextState();
 	}
 
 
@@ -90,17 +92,19 @@ public partial class MLPPPOController : Controller
 
 	override public void NewStateEvent()
 	{
-
-		if (GetStateAsString(0) == "envcontrol")
+		if (GetStateAsString(0) != "envcontrol")
 		{
-		} else
-		{
-			var state = GetNextState();
-			var action = model.SelectAction(state.view(-1, model.InputSize));
+			if ( state is null)
+			{
+				state = GetNextState();
+			}
+			var nextState = GetNextState();
+			var y = model.SelectAction(state.view(-1, model.InputSize));
+			long action = y.data<long>()[0];
 			cmdName = model.MainOutputName;
-			iargs = new int[]{(int)action.data<long>()[0]};
+			iargs = new int[]{(int)action};
+			state = nextState;
 		}
-
 	}
 	
 
