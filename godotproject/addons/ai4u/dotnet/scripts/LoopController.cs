@@ -53,6 +53,10 @@ namespace ai4u
 			{
 				agents.Add(agent);
 			}
+			if (GetParent() is Agent)
+			{
+				agents.Add(GetParent<Agent>());
+			}
 		
 			agents.Sort( new AgentComparer() );
 			for (int i = 0; i < agents.Count; i++)

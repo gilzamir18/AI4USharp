@@ -106,6 +106,7 @@ public partial class MLPPPO: Node
 
     private bool built = false;
 
+    public bool IsInTrainingMode => trainingMode;
 
     internal void Build(int numInputs, int numHidden, int numOutputs)
     {
@@ -128,7 +129,10 @@ public partial class MLPPPO: Node
                 optimizer = torch.optim.Adam(policy.parameters(), algorithm.LearningRate);
             }
             built = true;
-            GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncSingleton").Model = this;
+            if (trainingMode)
+            {
+                GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncSingleton").Model = this;
+            }
         }
     }
 

@@ -85,6 +85,7 @@ public partial class MLPPPOController : Controller
 			throw new System.Exception("Only one input is supported!!!");
 		}
 		model.Build(inputSize, 32, outputSize);
+		model.Load();
 	}
 	
 	override public void OnReset(Agent agent)
@@ -148,16 +149,13 @@ public partial class MLPPPOController : Controller
 	override public void NewStateEvent()
 	{
 
-		if (GetStateAsString(0) == "envcontrol")
-		{
-		} else
+		if (GetStateAsString(0) != "envcontrol")
 		{
 			var state = GetNextState();
 			var action = model.SelectAction(state.view(-1, model.InputSize));
 			cmdName = mainOutput;
 			iargs = new int[]{(int)action.data<long>()[0]};
 		}
-
 	}
 	
 

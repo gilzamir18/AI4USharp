@@ -31,8 +31,6 @@ public partial class MLPPPOTrainerAsync : Trainer
 	private float episodeCriticLoss = 0;
 	private float episodePolicyLoss = 0;
 
-	private bool modelSaved = false;
-
 	
 	private Dictionary<string, int> inputName2Idx; //mapping sensor name to sensor index.
 	private Dictionary<string, float[]> outputs; //mapping model output name to output value.
@@ -112,7 +110,6 @@ public partial class MLPPPOTrainerAsync : Trainer
 		}
 		
 		memory = new();
-		modelSaved = false;
 		model.Build(inputSize, 32, outputSize);
 		model.NumberOfEnvs += 1;
 		torch.autograd.set_detect_anomaly(true);

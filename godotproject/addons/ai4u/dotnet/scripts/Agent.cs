@@ -938,6 +938,57 @@ public partial class Agent : Node
 	{
 		return sensorsMap.TryGetValue(key, out s);
 	}
+
+
+	public static (int, int, bool, int, int, ModelOutput, Dictionary<string, int>, Dictionary<string, float[]>) GetModelMetadata(Agent agent, string mainOutput)
+	{
+		var metadata = agent.Metadata;
+		ModelOutput modelOutput = new();
+		Dictionary<string, int> inputName2Idx = new();
+		Dictionary<string, float[]> outputs = new();
+		int outputSize = 0;
+		int inputSize = 0;
+		bool isSingleInput = false;
+		int rewardIdx = 0;
+		int doneIdx = 0;
+		
+    	for (int o = 0; o < metadata.outputs.Length; o++)
+		{
+			var output = metadata.outputs[o];
+			outputs[output.name] = new float[output.shape[0]];
+			if (output.name == mainOutput)
+			{
+				modelOutput = output;
+                outputSize = output.shape[0];
+			}
+		}
+
+		for (int i = 0; i < agent.Sensors.Count; i++)
+		{
+			if (agent.Sensors[i].GetKey() == "reward")
+			{
+				rewardIdx = i;
+			} else if (agent.Sensors[i].GetKey() == "done")
+			{
+				doneIdx = i;
+			}
+			for (int j = 0; j < metadata.inputs.Length; j++)
+			{
+				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
+				{
+					if (metadata.inputs[j].name == null)
+						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
+					inputName2Idx[metadata.inputs[j].name] = i;
+					inputSize = metadata.inputs[i].shape[0];
+				}
+			}
+		}
+
+		if (metadata.inputs.Length == 1)
+			isSingleInput = true;
+		
+		return (inputSize, outputSize, isSingleInput, rewardIdx, doneIdx, modelOutput, inputName2Idx, outputs);
+	}
 }
 
 public interface IAgentResetListener

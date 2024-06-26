@@ -18,15 +18,15 @@ public partial class MLPPPOAsyncSingleton: Node
 
     private MLPPPO model;
 
-    private TrainingSharedConfig sharedConfig;
+    private PPOTrainingSharedConfig sharedConfig;
     
-    public TrainingSharedConfig SharedConfig
+    public PPOTrainingSharedConfig SharedConfig
     {
         get
         {
             if (sharedConfig == null)
             {
-                sharedConfig = new TrainingSharedConfig();
+                sharedConfig = new PPOTrainingSharedConfig();
                 GetTree().Root.AddChild(sharedConfig);
             }
             return sharedConfig;
@@ -177,6 +177,7 @@ public partial class MLPPPOAsyncSingleton: Node
                     finalizedWorkers ++;
                     if (finalizedWorkers >= Model.NumberOfEnvs)
                     {
+                        Model.Save();
                         GD.Print("Training finished.");
                         GetTree().Quit();
                     }

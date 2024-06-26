@@ -20,7 +20,7 @@ namespace ai4u
 		public int LastStep {get; set;}
 		public float LastReward {get; set;}
 		
-		protected Agent agent;		
+		internal Agent agent;		
 		private string[] desc;
 		private byte[] type;
 		private string[] value;
@@ -109,6 +109,13 @@ namespace ai4u
 			this.value = val;
 			this.desc = desc;
 			this.NewStateEvent();
+		}
+
+		public void GetStateFrom(Controller other)
+		{
+			this.type = other.type;
+			this.value = other.value;
+			this.desc = other.desc;
 		}
 		
 		public virtual void OnReset(Agent agent)

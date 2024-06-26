@@ -2,7 +2,7 @@ using ai4u;
 using Godot;
 using System;
 
-public partial class TrainingSharedConfig : Node
+public partial class PPOTrainingSharedConfig : Node
 {
 	[Export]
 	public string MainOutput {get;set;} = "move";
@@ -23,5 +23,6 @@ public partial class TrainingSharedConfig : Node
 			but there isn't any Autoload named MLPPPOAsyncSingleton of the type ai4u.MLPPPOAsyncSingleton. 
 			A TrainingSharedConfig object requires an autoload of the type ai4u.MLPPPOAsyncSingleton to work.");
 		}
+		p.SharedConfig = this; 
 	}
 }
