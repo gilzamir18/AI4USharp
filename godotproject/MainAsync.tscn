@@ -1,26 +1,55 @@
-[gd_scene load_steps=3 format=3 uid="uid://4iqekg3amlyh"]
+[gd_scene load_steps=4 format=3 uid="uid://4iqekg3amlyh"]
 
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPO.cs" id="1_hr4op"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/TrainingSharedConfig.cs" id="2_2cx3w"]
 [ext_resource type="PackedScene" uid="uid://qwn7lq4qmfiy" path="res://Main.tscn" id="2_hnjun"]
 
 [node name="MainAsync" type="Node2D"]
 
 [node name="SharedModel" type="Node" parent="."]
 script = ExtResource("1_hr4op")
-shared = true
+trainingMode = false
 
-[node name="Node" type="Node" parent="."]
+[node name="SharedConfig" type="Node" parent="."]
+script = ExtResource("2_2cx3w")
 
-[node name="Main" parent="Node" instance=ExtResource("2_hnjun")]
+[node name="Envs" type="Node" parent="."]
 
-[node name="TrainerController" parent="Node/Main/AgentBody/Agent" index="5"]
+[node name="Main" parent="Envs" instance=ExtResource("2_hnjun")]
+
+[node name="TrainerController" parent="Envs/Main/AgentBody/Agent" index="5"]
 trainerPath = NodePath("../PPOTrainerAsync")
+Enabled = false
 
-[node name="Main2" parent="Node" instance=ExtResource("2_hnjun")]
+[node name="ModelController" parent="Envs/Main/AgentBody/Agent" index="6" node_paths=PackedStringArray("model")]
+model = NodePath("../../../../../SharedModel")
+Enabled = true
+
+[node name="PPOTrainerAsync" parent="Envs/Main/AgentBody/Agent" index="9" node_paths=PackedStringArray("model")]
+model = NodePath("../../../../../SharedModel")
+
+[node name="LoopController" parent="Envs/Main" index="2"]
+defaultTimeScale = 1.0
+
+[node name="Main2" parent="Envs" instance=ExtResource("2_hnjun")]
 position = Vector2(325, 0)
 
-[node name="TrainerController" parent="Node/Main2/AgentBody/Agent" index="5"]
+[node name="TrainerController" parent="Envs/Main2/AgentBody/Agent" index="5"]
 trainerPath = NodePath("../PPOTrainerAsync")
+Enabled = false
 
-[editable path="Node/Main"]
-[editable path="Node/Main2"]
+[node name="ModelController" parent="Envs/Main2/AgentBody/Agent" index="6" node_paths=PackedStringArray("model")]
+model = NodePath("../../../../../SharedModel")
+Enabled = true
+
+[node name="PPOTrainer" parent="Envs/Main2/AgentBody/Agent" index="8" node_paths=PackedStringArray("model")]
+model = NodePath("../../../../Main/AgentBody/Agent/AgentModel")
+
+[node name="PPOTrainerAsync" parent="Envs/Main2/AgentBody/Agent" index="9" node_paths=PackedStringArray("model")]
+model = NodePath("../../../../../SharedModel")
+
+[node name="LoopController" parent="Envs/Main2" index="2"]
+defaultTimeScale = 1.0
+
+[editable path="Envs/Main"]
+[editable path="Envs/Main2"]

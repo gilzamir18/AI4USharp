@@ -23,7 +23,8 @@ public partial class MLPPPOTrainer : Trainer
 
 	[Export]
 	private int maxNumberOfUpdates = 1000;
-
+	[Export]
+	private string mainOutput = "move";
 	[Export]
 	private string logPath = "";
 
@@ -47,7 +48,16 @@ public partial class MLPPPOTrainer : Trainer
 	private bool modelSaved = false;
 
 	private SummaryWriter summaryWriter;
+
+	private Dictionary<string, int> inputName2Idx; //mapping sensor name to sensor index.
+	private Dictionary<string, float[]> outputs; //mapping model output name to output value.
+	private ModelOutput modelOutput; //output metadata.
 	
+	private int rewardIdx = -1;
+	private int doneIdx = -1;
+
+	private int outputSize;
+	private int inputSize;
 
 	public override bool TrainingFinalized()
 	{
@@ -59,16 +69,60 @@ public partial class MLPPPOTrainer : Trainer
 	/// </summary>
 	public override void OnSetup()
 	{
-		summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "_log");
+		if (summaryWriter == null)
+		{
+			summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "ppo_log");
+		}
 		metadata = agent.Metadata;
+		outputs = new();
+		inputName2Idx = new();
+		
+    	for (int o = 0; o < metadata.outputs.Length; o++)
+		{
+			var output = metadata.outputs[o];
+			outputs[output.name] = new float[output.shape[0]];
+			if (output.name == mainOutput)
+			{
+				modelOutput = output;
+                outputSize = output.shape[0];
+			}
+		}
+
+		for (int i = 0; i < agent.Sensors.Count; i++)
+		{
+			if (agent.Sensors[i].GetKey() == "reward")
+			{
+				rewardIdx = i;
+			} else if (agent.Sensors[i].GetKey() == "done")
+			{
+				doneIdx = i;
+			}
+			for (int j = 0; j < metadata.inputs.Length; j++)
+			{
+				if (agent.Sensors[i].GetName() == metadata.inputs[j].name)
+				{
+					if (metadata.inputs[j].name == null)
+						throw new Exception($"Perception key of the sensor {agent.Sensors[i].GetType()} cannot be null!");
+					inputName2Idx[metadata.inputs[j].name] = i;
+					inputSize = metadata.inputs[i].shape[0];
+				}
+			}
+		}
+
+		if (metadata.inputs.Length == 1)
+		{
+			isSingleInput = true;
+		}
+		else
+		{
+			isSingleInput = false;
+			throw new System.Exception("Only one input is supported!!!");
+		}
+		model.Build(inputSize, 32, outputSize);
+		model.NumberOfEnvs += 1;
+	
 		memory = new();
 		modelSaved = false;
-		if (model.algorithm == null)
-		{
-			var alg = new MLPPPOAlgorithm();
-			AddChild(alg);
-			model.algorithm = alg;
-		}
 	}	
 	
 	///<summary>
@@ -118,13 +172,17 @@ public partial class MLPPPOTrainer : Trainer
 			{
 				modelSaved = true;
 				model.Save();
+				GD.Print("It was saved the trained model!");
+				GetTree().Quit();
 			}
-		} else if (memory.actions.Count > 0 && ended)
+			horizonPos = 0;
+		} else if (memory.states.Count > 0 && ended)
 		{
 			(criticLoss, policyLoss) = model.algorithm.Update(model, memory);
 			memory.Clear();
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
+			horizonPos = 0;
 		}
 		episodeCriticLoss += criticLoss;
 		episodePolicyLoss += policyLoss;
@@ -136,16 +194,13 @@ public partial class MLPPPOTrainer : Trainer
 	/// <returns>float[]: sensor value</returns>
 	private float[] GetInputAsArray(string name)
 	{
-		return controller.GetStateAsFloatArray(model.GetInputIdx(name));
+		return controller.GetStateAsFloatArray(inputName2Idx[name]);
 	}
 
 	public override void EnvironmentMessage()
 	{
 		
 	}
-
-	private static torch.Tensor oldLogProbs = null, oldValues = null;
-
 	private static bool ended = false;
 
 	private void CollectData()
@@ -155,15 +210,15 @@ public partial class MLPPPOTrainer : Trainer
 			state = GetNextState();
 		}
 		
-		var reward = controller.GetStateAsFloat(model.RewardIndex);
-		var done = controller.GetStateAsBool(model.DoneIndex);
+		var reward = controller.GetStateAsFloat(rewardIdx);
+		var done = controller.GetStateAsBool(doneIdx);
 
 		var nextState = GetNextState();
 
 		var y = model.SelectAction(state.view(-1, model.InputSize));
 		long action = y.data<long>()[0];
 
-		controller.RequestAction(model.MainOutputName, new int[]{ (int)action});
+		controller.RequestAction(mainOutput, new int[]{ (int)action});
 		
 		memory.actions.Add(y.detach());
 		memory.states.Add(state.detach());

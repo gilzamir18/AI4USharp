@@ -8,18 +8,6 @@ namespace ai4u;
 
 public partial class MLPPPOTrainerAsync : Trainer
 {
-	/// <summary>
-	/// If true, episode is restarted after ending.
-	/// </summary>
-	[Export]
-	private bool reinitialize = true;
-
-	[Export]
-	private int horizon = 5;
-
-	[Export]
-	private int maxNumberOfUpdates = 1000;
-
 	[Export]
 	private string mainOutput = "move";
 
@@ -43,8 +31,6 @@ public partial class MLPPPOTrainerAsync : Trainer
 	private float episodeCriticLoss = 0;
 	private float episodePolicyLoss = 0;
 
-	private bool modelSaved = false;
-
 	
 	private Dictionary<string, int> inputName2Idx; //mapping sensor name to sensor index.
 	private Dictionary<string, float[]> outputs; //mapping model output name to output value.
@@ -58,13 +44,13 @@ public partial class MLPPPOTrainerAsync : Trainer
 
 	private long globalSteps = 0;
 
-    private MLPPPOAsyncSingleton asyncPlugin;
+	private int episodes = -1;
 
-	private SummaryWriter summaryWriter;
+    private MLPPPOAsyncSingleton asyncPlugin;
 
 	public override bool TrainingFinalized()
 	{
-		return totalPolicyUpdates >=  maxNumberOfUpdates;
+		return totalPolicyUpdates >=  asyncPlugin.SharedConfig.MaxNumberOfUpdates;
 	}
 
 	/// <summary>
@@ -72,8 +58,7 @@ public partial class MLPPPOTrainerAsync : Trainer
 	/// </summary>
 	public override void OnSetup()
 	{
-		summaryWriter = torch.utils.tensorboard.SummaryWriter("", "reward_log");
-        asyncPlugin = GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncPlugin");
+        asyncPlugin = GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncSingleton");
 		if (asyncPlugin == null)
         {
             GD.PrintErr("MLPPPOAsyncSingleton must be configured in your Godot project as an autoload!!!");
@@ -125,7 +110,9 @@ public partial class MLPPPOTrainerAsync : Trainer
 		}
 		
 		memory = new();
-		modelSaved = false;
+		model.Build(inputSize, 32, outputSize);
+		model.NumberOfEnvs += 1;
+		torch.autograd.set_detect_anomaly(true);
 	}
 	
 	///<summary>
@@ -133,9 +120,11 @@ public partial class MLPPPOTrainerAsync : Trainer
 	///</summary>
 	public override void OnReset(Agent agent)
 	{
-		GD.Print("Episode Reward: " + agent.EpisodeReward);
-		summaryWriter.add_scalar("episode/reward", agent.EpisodeReward, (int)totalPolicyUpdates);
-		GD.Print("Updates: " + totalPolicyUpdates);
+		episodes += 1;
+		if (episodes > 0)
+		{
+			asyncPlugin.Put("endepisode", $"{episodes} {agent.EpisodeReward}");
+		}
 		policyUpdatesByEpisode = 0;
 		ended = false;
 		horizonPos = 0;
@@ -158,20 +147,26 @@ public partial class MLPPPOTrainerAsync : Trainer
 		CollectData();
 		float criticLoss = 0;
 		float policyLoss = 0;
-		if ( (horizonPos >= horizon || !agent.Alive()) && !TrainingFinalized())
+		if ( (horizonPos >= asyncPlugin.SharedConfig.Horizon || !agent.Alive()) && !TrainingFinalized())
 		{
-            asyncPlugin.PutSample("sample", model, memory);
-			memory = new MLPPPOMemory();
+			(criticLoss, policyLoss) = model.algorithm.Update(model, memory, true);
+            asyncPlugin.Put("workdone", $"{criticLoss} {policyLoss}");
+			memory.Clear();
 			horizonPos = 0;
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
 		} else if (memory.actions.Count > 0 && ended)
 		{
-            asyncPlugin.PutSample("sample", model, memory);
+			(criticLoss, policyLoss) = model.algorithm.Update(model, memory, true);
+            asyncPlugin.Put("workdone", $"{criticLoss} {policyLoss}");
 			horizonPos = 0;
-			memory = new MLPPPOMemory();
+			memory.Clear();
 			policyUpdatesByEpisode++;
 			totalPolicyUpdates++;
+		}
+		if (TrainingFinalized())
+		{
+			asyncPlugin.Put("work finished", "");
 		}
 		episodeCriticLoss += criticLoss;
 		episodePolicyLoss += policyLoss;
@@ -191,8 +186,6 @@ public partial class MLPPPOTrainerAsync : Trainer
 	{
 		
 	}
-
-	private static torch.Tensor oldLogProbs = null, oldValues = null;
 
 	private static bool ended = false;
 
