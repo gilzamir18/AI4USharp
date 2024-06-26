@@ -25,48 +25,72 @@ public partial class MLPPPOAlgorithm: Node
     private float clipParam = 0.2f; 
     
     public float LearningRate => learningRate;
+    private readonly object updateLock = new object();
 
-    public  (float criticLoss, float policyLoss) Update(MLPPPO  model, MLPPPOMemory memory)
+    public  (float criticLoss, float policyLoss) Update(MLPPPO  model, MLPPPOMemory memory, bool accumulate = false)
     {
-        var states = torch.stack(memory.states).detach();
-        var actions = torch.stack(memory.actions).detach();
-        var rewards = torch.tensor(memory.rewards.ToArray()).detach();
-        var dones = torch.tensor(memory.dones.Select(d => d ? 1f : 0f).ToArray()).detach();
-
-        var oldValues = model.oldPolicy.Evaluate(states.view(-1, model.InputSize)).squeeze().detach();
-        if (oldValues.dim() == 0)
+        lock(updateLock)
         {
-            oldValues = oldValues.reshape(1);
-        }
+            var states = torch.stack(memory.states).detach();
+            var actions = torch.stack(memory.actions).detach();
+            var rewards = torch.tensor(memory.rewards.ToArray()).detach();
+            var dones = torch.tensor(memory.dones.Select(d => d ? 1f : 0f).ToArray()).detach();
 
-        var advantages = ComputeAdvantages(rewards, oldValues, dones).detach();
-        var oldLogProbs = ComputeLogProbs(model.oldPolicy, states, actions).detach();
-        float totalPolicyLoss = 0;
-        float totalValueLoss = 0;
-        for (int i = 0; i < updates; i++)
-        {
-            var newLogProbs = ComputeLogProbs(model.policy, states, actions);
-            var values = model.policy.Evaluate(states.view(-1, model.InputSize)).squeeze().detach();
-            if (values.dim() == 0)
+            var oldValues = model.oldPolicy.Evaluate(states.view(-1, model.InputSize)).squeeze().detach();
+            if (oldValues.dim() == 0)
             {
-                values = values.reshape(1);
+                oldValues = oldValues.reshape(1);
             }
-            var ratio = (newLogProbs - oldLogProbs).exp();
-            var surr1 = ratio * advantages;
-            var surr2 = ratio.clamp(1 - clipParam, 1 + clipParam) * advantages;
 
-            var policyLoss = -torch.min(surr1, surr2).mean();
-            var valueLoss = (values - rewards).pow(2).mean();
-            totalPolicyLoss += policyLoss.item<float>();
-            totalValueLoss += valueLoss.item<float>();
-            model.optimizer.zero_grad();
-            (policyLoss + valueLoss).backward();
-            model.optimizer.step();
+            var advantages = ComputeAdvantages(rewards, oldValues, dones).detach();
+            var oldLogProbs = ComputeLogProbs(model.oldPolicy, states, actions).detach();
+            float totalPolicyLoss = 0;
+            float totalValueLoss = 0;
+            for (int i = 0; i < updates; i++)
+            {
+                var newLogProbs = ComputeLogProbs(model.policy, states, actions);
+                var values = model.policy.Evaluate(states.view(-1, model.InputSize)).squeeze().detach();
+                if (values.dim() == 0)
+                {
+                    values = values.reshape(1);
+                }
+                var ratio = (newLogProbs - oldLogProbs).exp();
+                var surr1 = ratio * advantages;
+                var surr2 = ratio.clamp(1 - clipParam, 1 + clipParam) * advantages;
+
+                var policyLoss = -torch.min(surr1, surr2).mean();
+                var valueLoss = (values - rewards).pow(2).mean();
+                totalPolicyLoss += policyLoss.item<float>();
+                totalValueLoss += valueLoss.item<float>();
+                if (!accumulate)
+                {
+                    model.optimizer.zero_grad();
+                }
+                (policyLoss + valueLoss).backward();
+                if (!accumulate)
+                {
+                    model.optimizer.step();
+                }
+            }
+        
+
+            if (!accumulate)
+            {
+                // Update the old policy
+                model.oldPolicy.load_state_dict(model.policy.state_dict());
+            }
+            return (totalValueLoss / updates, totalPolicyLoss / updates);
         }
+    }
 
-        // Atualiza a política antiga
-        model.oldPolicy.load_state_dict(model.policy.state_dict());
-        return (totalValueLoss / updates, totalPolicyLoss / updates);
+    public void ApplyGradients(MLPPPO  model)
+    {
+        lock (updateLock)
+        {
+            model.optimizer.step();
+            model.optimizer.zero_grad();
+            model.oldPolicy.load_state_dict(model.policy.state_dict());
+        }
     }
 
     private Tensor ComputeAdvantages(Tensor rewards, Tensor values, Tensor dones)

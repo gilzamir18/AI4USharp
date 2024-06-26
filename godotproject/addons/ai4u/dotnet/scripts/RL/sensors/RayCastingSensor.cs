@@ -156,7 +156,6 @@ namespace ai4u
 			
 			float iangle = -fieldOfView;
 			
-			var debugline = 0;
 			for (int i = 0; i < hSize; i++)
 			{
 				var k1 = 1;

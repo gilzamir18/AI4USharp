@@ -7,15 +7,38 @@ using System.Threading.Tasks;
 using TorchSharp.Utils.tensorboard;
 using TorchSharp;
 using TorchSharp.Modules;
+using System.Linq;
 namespace ai4u;
 
 public partial class MLPPPOAsyncSingleton: Node
 {
-    private ConcurrentQueue< (string, MLPPPOMemory, MLPPPO) > sampleCollections = new ConcurrentQueue< (string, MLPPPOMemory, MLPPPO) >();
+    private ConcurrentQueue< (string, string) > sampleCollections = new ConcurrentQueue< (string, string) >();
 
 	public SummaryWriter summaryWriter;
 
     private MLPPPO model;
+
+    private TrainingSharedConfig sharedConfig;
+    
+    public TrainingSharedConfig SharedConfig
+    {
+        get
+        {
+            if (sharedConfig == null)
+            {
+                sharedConfig = new TrainingSharedConfig();
+                GetTree().Root.AddChild(sharedConfig);
+            }
+            return sharedConfig;
+        }
+
+        set
+        {
+            sharedConfig = value;
+        }
+    }
+
+    private readonly object endEpisodeLock = new object();
 
     public MLPPPO Model { 
             
@@ -36,23 +59,36 @@ public partial class MLPPPOAsyncSingleton: Node
         }
     }
 
-    private Dictionary<string, string> properties = new Dictionary<string, string>();
 
-    private int globalStep = 0;
+
+    private Dictionary<int, List<float> > rewards = new();
+
+    private int numberOfWorkersUpdates = 0;
+    private int numberOfGradientUpdates = 0;
+
+    private int episodeCounter = 0;
 
     private int countModels = 0;
 
     private string logPath = "";
     private Task trainingLoop;
 
-    public void PutSample(string msg, MLPPPO model, MLPPPOMemory sample)
+    private int finalizedWorkers = 0;
+
+
+    public void SetLogPath(string path)
     {
-        sampleCollections.Enqueue( (msg, sample, model) );
+        this.logPath = path;
+    }
+
+    public void Put(string msg, string data)
+    {
+        sampleCollections.Enqueue( (msg, data) );
     }
 
     public override void _Ready()
     {
-        summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "loss_log");
+        summaryWriter = torch.utils.tensorboard.SummaryWriter(logPath, "ppoasync_log");
         trainingLoop = Task.Run(TrainingLoop);
     }
 
@@ -61,7 +97,7 @@ public partial class MLPPPOAsyncSingleton: Node
     {
         if (what == NotificationWMCloseRequest)
         {
-            sampleCollections.Enqueue( ("done", null, null) );
+            sampleCollections.Enqueue( ("done", "") );
             Task.WaitAll(trainingLoop);
             Model.Save();
         }
@@ -69,48 +105,85 @@ public partial class MLPPPOAsyncSingleton: Node
 
     public override void _ExitTree()
     {
-        sampleCollections.Enqueue( ("done", null, null) );
+        sampleCollections.Enqueue( ("done", "") );
         Task.WaitAll(trainingLoop);
     }
 
     public void TrainingLoop()
     {
         bool training = true;
+        float criticLossAverage = 0;
+        float policyLossAverage = 0;
         while (training)
         {
 
-            if (sampleCollections.TryDequeue(out (string, MLPPPOMemory, MLPPPO) item) && Model != null)
+            if (sampleCollections.TryDequeue(out (string, string) item) && Model != null)
             { 
                 if (item.Item1 ==  "done")
                 {
                     training = false;
                     break;
                 }
-                else
+                else if (item.Item1 == "workdone")
                 {
-                    Model.oldPolicy.load_state_dict(item.Item3.policy.state_dict());
-                    var (criticLoss, policyLoss) = Model.algorithm.Update(Model, item.Item2);
-                    item.Item3.policy.load_state_dict(Model.policy.state_dict());
-                    item.Item3.oldPolicy.load_state_dict(Model.oldPolicy.state_dict());
+                    string[] losses = item.Item2.Split(" ");
+                    criticLossAverage += float.Parse(losses[0]);
+                    policyLossAverage += float.Parse(losses[1]);
 
-                    summaryWriter.add_scalar("critic/loss", criticLoss, globalStep);
-                    summaryWriter.add_scalar("policy/Loss", policyLoss, globalStep);
-                    //item.Clear();
-                    if (globalStep % 100 == 0 && globalStep > 0)
+
+                    numberOfWorkersUpdates++;
+                    if ( (numberOfWorkersUpdates % SharedConfig.UpdateGradientInterval) == 0)
                     {
-                        GD.Print("critic/loss: " + criticLoss);
-                        GD.Print("policy/Loss: " + policyLoss);
+                        Model.algorithm.ApplyGradients(Model);
+                        numberOfGradientUpdates++;
+                        var criticLoss = criticLossAverage/SharedConfig.UpdateGradientInterval;
+                        var policyLoss = policyLossAverage/SharedConfig.UpdateGradientInterval;
+                        summaryWriter.add_scalar($"critic/loss", criticLoss,  numberOfGradientUpdates);
+                        summaryWriter.add_scalar($"policy/loss", policyLoss, numberOfGradientUpdates);
+                        GD.Print($"critic/loss: " + criticLoss);
+                        GD.Print($"policy/Loss: " + policyLoss);
+                        GD.Print($"Model Updates: {numberOfGradientUpdates}");
+                        GD.Print($"Total of Workers Updates: {numberOfWorkersUpdates}");
+                        criticLossAverage = 0;
+                        policyLossAverage = 0;
+                        
                     }
-                    globalStep++;
+                }
+                else if (item.Item1 == "endepisode")
+                {
+                    lock (endEpisodeLock)
+                    {
+                        episodeCounter += 1;
+                        string[] args = item.Item2.Split(' ');
+                        int e = int.Parse(args[0]);
+                        float reward = float.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
+                        if (!rewards.ContainsKey(e))
+                        {
+                            rewards[e] = new List<float>();
+                        }
+                        var rewardsRef = rewards[e];
+                        rewardsRef.Add(reward);
+                        if (rewardsRef.Count >= Model.NumberOfEnvs)
+                        {
+                            var ar = rewardsRef.Average();
+                            GD.Print("episode/reward " + ar);
+                            summaryWriter.add_scalar("episode/reward", ar, e);
+                            rewards.Remove(e);
+                        }
+                    }
+                }
+                else if (item.Item1 == "work finished")
+                {
+                    finalizedWorkers ++;
+                    if (finalizedWorkers >= Model.NumberOfEnvs)
+                    {
+                        GD.Print("Training finished.");
+                        GetTree().Quit();
+                    }
                 }
             }
         }
         Model.Save();
         GD.Print("Training loop was finalized!!!");
-    }
-
-    public void SyncModel(MLPPPO model)
-    {
-        model.SyncWith(Model);
     }
 }

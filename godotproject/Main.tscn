@@ -114,10 +114,9 @@ script = ExtResource("8_b3iyv")
 trainerPath = NodePath("../PPOTrainer")
 tryInitialize = true
 
-[node name="ModelController" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
+[node name="ModelController" type="Node" parent="AgentBody/Agent"]
 script = ExtResource("10_bqlc2")
 tryInitialize = true
-model = NodePath("")
 Enabled = false
 
 [node name="WallCollisionReward" type="Node" parent="AgentBody/Agent"]
@@ -134,8 +133,6 @@ maxNumberOfUpdates = 2000
 
 [node name="PPOTrainerAsync" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
 script = ExtResource("13_5kljx")
-horizon = 51
-maxNumberOfUpdates = 2000
 model = NodePath("../AgentModel")
 
 [node name="AgentModel" type="Node" parent="AgentBody/Agent"]
