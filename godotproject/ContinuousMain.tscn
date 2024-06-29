@@ -1,19 +1,17 @@
-[gd_scene load_steps=26 format=3 uid="uid://qwn7lq4qmfiy"]
+[gd_scene load_steps=24 format=3 uid="uid://ce4h7do6h1odt"]
 
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPO.cs" id="1_82h8a"]
-[ext_resource type="Script" path="res://AgentBody.cs" id="1_ronsf"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/Agent.cs" id="2_721ef"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/DiscretActuator.cs" id="2_mp8v8"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/MinDistReward2D.cs" id="3_wauwv"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/sensors/OrientationSensor2D.cs" id="4_s7wq2"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/CBRespawnActuator2D.cs" id="6_mqyyi"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/TouchRewardFunc2D.cs" id="7_k3qe6"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/PPO/MLPPPOTrainer.cs" id="8_54m80"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/TrainController.cs" id="8_b3iyv"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/PPO/MLPPPOController.cs" id="10_bqlc2"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/GroupTouchRewardFunc2D.cs" id="10_yo41t"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/LoopController.cs" id="11_g2c2g"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/PPO/MLPPPOTrainerAsync.cs" id="13_5kljx"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/CBMoveActuator2D.cs" id="2_phveh"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/Agent.cs" id="2_rdi4i"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/MinDistReward2D.cs" id="4_fxpbm"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/sensors/OrientationSensor2D.cs" id="5_r64tk"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/actuators/CBRespawnActuator2D.cs" id="6_n8006"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/TouchRewardFunc2D.cs" id="7_s7t5m"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/ContinuousPPO/ContinuousMLPPPOController.cs" id="8_danfd"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/TrainController.cs" id="8_w2n6q"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/controllers/ContinuousPPO/ContinuousMLPPPOTrainer.cs" id="10_a3ke4"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/RL/events/GroupTouchRewardFunc2D.cs" id="10_q6fvq"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/ContinuousPPO/ContinuousMLPPPO.cs" id="11_142n2"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/LoopController.cs" id="14_3olst"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dcnmv"]
 size = Vector2(20, 52)
@@ -60,9 +58,6 @@ fill = 1
 position = Vector2(110, 61)
 scale = Vector2(4.16, 0.24)
 motion_mode = 1
-script = ExtResource("1_ronsf")
-speed = 100.0
-turnAmount = 10.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AgentBody"]
 position = Vector2(0, 16)
@@ -75,21 +70,25 @@ scale = Vector2(0.274189, 0.651042)
 texture = SubResource("GradientTexture2D_eskxy")
 
 [node name="Agent" type="Node" parent="AgentBody"]
-script = ExtResource("2_721ef")
+script = ExtResource("2_rdi4i")
 doneAtNegativeReward = false
 
 [node name="MoveActuator" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("2_mp8v8")
-size = 4
+script = ExtResource("2_phveh")
+moveAmount = 5.0
+turnAmount = 5.0
+jumpPower = 0.0
+jumpForwardPower = 0.0
+flipWhenTurn = false
 actionName = "move"
 
 [node name="ApproxReward" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("3_wauwv")
+script = ExtResource("4_fxpbm")
 target = NodePath("../../../Target")
 stepReward = -0.005
 
 [node name="OrientationSensor" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("target", "reference")]
-script = ExtResource("4_s7wq2")
+script = ExtResource("5_r64tk")
 target = NodePath("../../../Target")
 reference = NodePath("../..")
 maxDistance = 10.0
@@ -97,46 +96,47 @@ _normalized = true
 perceptionKey = "position"
 
 [node name="Respawner" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("6_mqyyi")
+script = ExtResource("6_n8006")
 respawnOptionsPath = NodePath("../../../AgentPosition")
 flipWhenTurn = false
 randomize = false
 isOutput = false
 
 [node name="GetTargetReward" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("target")]
-script = ExtResource("7_k3qe6")
+script = ExtResource("7_s7t5m")
 reward = 10.0
 target = NodePath("../../../Target")
 causeEpisodeToEnd = true
 
 [node name="TrainerController" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("8_b3iyv")
+script = ExtResource("8_w2n6q")
 trainerPath = NodePath("../PPOTrainer")
-tryInitialize = true
-
-[node name="ModelController" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("10_bqlc2")
 tryInitialize = true
 Enabled = false
 
+[node name="ModelController" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
+script = ExtResource("8_danfd")
+tryInitialize = true
+model = NodePath("../AgentModel")
+
 [node name="WallCollisionReward" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("10_yo41t")
+script = ExtResource("10_q6fvq")
 reward = -10.0
 group = "WALL"
 causeEpisodeToEnd = true
 
 [node name="PPOTrainer" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
-script = ExtResource("8_54m80")
+script = ExtResource("10_a3ke4")
 model = NodePath("../AgentModel")
-horizon = 51
+horizon = 32
 maxNumberOfUpdates = 2000
 
-[node name="PPOTrainerAsync" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("model")]
-script = ExtResource("13_5kljx")
-model = NodePath("../AgentModel")
+[node name="LoopController" type="Node" parent="AgentBody/Agent" node_paths=PackedStringArray("agentsList")]
+script = ExtResource("14_3olst")
+agentsList = [NodePath("..")]
 
 [node name="AgentModel" type="Node" parent="AgentBody/Agent"]
-script = ExtResource("1_82h8a")
+script = ExtResource("11_142n2")
 
 [node name="Target" type="StaticBody2D" parent="."]
 modulate = Color(0.7, 0, 0.0116665, 1)
@@ -148,11 +148,6 @@ debug_color = Color(0.584422, 0.487564, 0.682981, 0.42)
 
 [node name="Sprite2D" type="Sprite2D" parent="Target"]
 texture = SubResource("GradientTexture2D_urjle")
-
-[node name="LoopController" type="Node" parent="." node_paths=PackedStringArray("agentsList")]
-script = ExtResource("11_g2c2g")
-defaultTimeScale = 10.0
-agentsList = [NodePath("../AgentBody/Agent")]
 
 [node name="AgentPosition" type="Node2D" parent="."]
 position = Vector2(91, 62)

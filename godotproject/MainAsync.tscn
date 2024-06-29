@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://4iqekg3amlyh"]
 
 [ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/MLPPPO.cs" id="1_hr4op"]
-[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/TrainingSharedConfig.cs" id="2_2cx3w"]
+[ext_resource type="Script" path="res://addons/ai4u/dotnet/scripts/algorithms/PPO/PPOTrainingSharedConfig.cs" id="2_2cx3w"]
 [ext_resource type="PackedScene" uid="uid://qwn7lq4qmfiy" path="res://Main.tscn" id="2_hnjun"]
 
 [node name="MainAsync" type="Node2D"]

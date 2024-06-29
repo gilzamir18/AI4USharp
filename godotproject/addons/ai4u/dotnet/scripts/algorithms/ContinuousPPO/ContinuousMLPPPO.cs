@@ -10,7 +10,7 @@ using Godot;
 
 namespace ai4u;
 
-public class MLPPPOMemory
+public class ContinuousMLPPPOMemory
 {
     public List<Tensor> states = new List<Tensor>();
     public List<Tensor> actions = new List<Tensor>();
@@ -26,39 +26,50 @@ public class MLPPPOMemory
     }
 }
 
-public class ActorCritic : Module
+public class ContinuousActorCritic : Module
 {
-    private readonly Sequential actor;
+    private readonly Sequential actorMean;
+    private readonly Sequential actorLogStd;
     private readonly Sequential critic;
 
-    public Sequential Actor => actor;
+    public Sequential Actor => actorMean;
     public Sequential Critic => critic;
 
-    public ActorCritic(int inputSize, int hiddenSize, int actionSize) : base(nameof(ActorCritic))
+    public ContinuousActorCritic(int inputSize, int hiddenSize, int actionSize) : base(nameof(ActorCritic))
     {
-        actor = Sequential(
-            Linear(inputSize, hiddenSize),
-            ReLU(),
-            Linear(hiddenSize, hiddenSize),
-            ReLU(),
-            Linear(hiddenSize, actionSize),
-            Softmax(1)
+        actorMean = Sequential(
+            ("layer1", Linear(inputSize, hiddenSize)),
+            ("relu1", ReLU()),
+            ("layer2", Linear(hiddenSize, hiddenSize)),
+            ("relu2", ReLU()),
+            ("layer3", Linear(hiddenSize, actionSize))
+        );
+
+        actorLogStd = Sequential(
+            ("layer1", Linear(inputSize, hiddenSize)),
+            ("relu1", ReLU()),
+            ("layer2", Linear(hiddenSize, hiddenSize)),
+            ("relu2", ReLU()),
+            ("layer3", Linear(hiddenSize, actionSize)),
+            ("log_std", Tanh())  // Tanh para manter log_std em um intervalo razoável
         );
 
         critic = Sequential(
-            Linear(inputSize, hiddenSize),
-            ReLU(),
-            Linear(hiddenSize, hiddenSize),
-            ReLU(),
-            Linear(hiddenSize, 1)
+            ("layer1", Linear(inputSize, hiddenSize)),
+            ("relu1", ReLU()),
+            ("layer2", Linear(hiddenSize, hiddenSize)),
+            ("relu2", ReLU()),
+            ("layer3", Linear(hiddenSize, 1))
         );
 
         RegisterComponents();
     }
 
-    public Tensor Act(Tensor input)
+    public (Tensor mean, Tensor logStd) Act(Tensor input)
     {
-        return actor.forward(input);
+        var mean = actorMean.forward(input);
+        var logStd = actorLogStd.forward(input);
+        return (mean, logStd);
     }
 
     public Tensor Evaluate(Tensor input)
@@ -69,22 +80,22 @@ public class ActorCritic : Module
     public void Save(string prefix="model", string path="")
     {
         GD.Print(System.IO.Path.Join(path, prefix + "_critic.dat"));
-        actor.save(System.IO.Path.Join(path, prefix + "_actor.dat"));
+        actorMean.save(System.IO.Path.Join(path, prefix + "_actor.dat"));
         critic.save(System.IO.Path.Join(path, prefix + "_critic.dat"));
     }
 
     public void Load(string prefix="model", string path="")
     {
-        actor.load (System.IO.Path.Join(path, prefix + "_actor.dat"));
+        actorMean.load (System.IO.Path.Join(path, prefix + "_actor.dat"));
         critic.load(System.IO.Path.Join(path, prefix + "_critic.dat"));
     }
 }
 
 
-public partial class MLPPPO: Node
+public partial class ContinuousMLPPPO: Node
 {
-    internal ActorCritic policy;
-    internal ActorCritic oldPolicy;
+    internal ContinuousActorCritic policy;
+    internal ContinuousActorCritic oldPolicy;
     internal torch.optim.Optimizer optimizer;
 
     [Export]
@@ -94,9 +105,10 @@ public partial class MLPPPO: Node
     [Export]
     private bool trainingMode = true;
     [Export]
-    internal MLPPPOAlgorithm algorithm;
+    internal ContinuousMLPPPOAlgorithm algorithm;
     [Export]
     internal bool shared = false;
+
     public int NumberOfEnvs {get; set;} = 0;
 
     private int inputSize = 2;
@@ -115,15 +127,15 @@ public partial class MLPPPO: Node
         {
             if (trainingMode)
             {
-                algorithm = new MLPPPOAlgorithm();
+                algorithm = new ContinuousMLPPPOAlgorithm();
                 AddChild(algorithm);
             }
             this.inputSize = numInputs;
             this.hiddenSize = numHidden;
             this.outputSize = numOutputs;
         
-            policy = new ActorCritic(inputSize, hiddenSize, outputSize);
-            oldPolicy = new ActorCritic(inputSize, hiddenSize, outputSize);
+            policy = new ContinuousActorCritic(inputSize, hiddenSize, outputSize);
+            oldPolicy = new ContinuousActorCritic(inputSize, hiddenSize, outputSize);
             if (algorithm != null && optimizer == null)
             {
                 GD.PrintRich("Warning: this model is in training mode!");
@@ -132,7 +144,7 @@ public partial class MLPPPO: Node
             built = true;
             if (shared)
             {
-                GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncSingleton").Model = this;
+                GetTree().Root.GetNode<ContinuousMLPPPOAsyncSingleton>("MLPPPOAsyncSingleton").Model = this;
             }
         }
     }
@@ -152,8 +164,9 @@ public partial class MLPPPO: Node
 
     public Tensor SelectAction(Tensor state)
     {
-        var actionProbs = policy.Act(state);
-        var action = torch.multinomial(actionProbs, 1);
+        var (mean, logStd) = policy.Act(state);
+        var std = logStd.exp();
+        var action = mean + std * torch.randn_like(mean);
         return action;
     }
 

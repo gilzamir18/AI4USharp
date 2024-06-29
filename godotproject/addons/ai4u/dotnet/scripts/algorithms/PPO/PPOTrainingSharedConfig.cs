@@ -16,13 +16,24 @@ public partial class PPOTrainingSharedConfig : Node
     public override void _EnterTree()
     {
         base._EnterTree();
-		var p = GetTree().Root.GetNode<MLPPPOAsyncSingleton>("MLPPPOAsyncSingleton");
+		var p = GetTree().Root.GetNode("MLPPPOAsyncSingleton");
+
 		if (p == null)
 		{
 			GD.PrintErr(@"Error: You added a TrainingSharedConfig to your scene, 
 			but there isn't any Autoload named MLPPPOAsyncSingleton of the type ai4u.MLPPPOAsyncSingleton. 
 			A TrainingSharedConfig object requires an autoload of the type ai4u.MLPPPOAsyncSingleton to work.");
 		}
-		p.SharedConfig = this; 
+		if (p != null)	
+		{
+			if (p is MLPPPOAsyncSingleton)
+			{
+				((MLPPPOAsyncSingleton)p).SharedConfig = this;
+			}
+			else if (p is ContinuousMLPPPOAsyncSingleton)
+			{
+				((ContinuousMLPPPOAsyncSingleton)p).SharedConfig = this;
+			}
+		}	 
 	}
 }

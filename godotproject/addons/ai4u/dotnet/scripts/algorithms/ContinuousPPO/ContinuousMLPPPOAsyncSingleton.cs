@@ -8,16 +8,15 @@ using TorchSharp.Utils.tensorboard;
 using TorchSharp;
 using TorchSharp.Modules;
 using System.Linq;
-using System.Threading;
 namespace ai4u;
 
-public partial class MLPPPOAsyncSingleton: Node
+public partial class ContinuousMLPPPOAsyncSingleton: Node
 {
     private ConcurrentQueue< (string, string) > sampleCollections = new ConcurrentQueue< (string, string) >();
 
 	public SummaryWriter summaryWriter;
 
-    private MLPPPO model;
+    private ContinuousMLPPPO model;
 
     private PPOTrainingSharedConfig sharedConfig;
     
@@ -41,7 +40,7 @@ public partial class MLPPPOAsyncSingleton: Node
 
     private readonly object endEpisodeLock = new object();
 
-    public MLPPPO Model { 
+    public ContinuousMLPPPO Model { 
             
         get 
         {
@@ -53,7 +52,7 @@ public partial class MLPPPOAsyncSingleton: Node
             model = value;
             if (model.algorithm == null)
             {
-                var alg = new MLPPPOAlgorithm();
+                var alg = new ContinuousMLPPPOAlgorithm();
                 AddChild(alg);
                 model.algorithm = alg;
             }
@@ -78,16 +77,6 @@ public partial class MLPPPOAsyncSingleton: Node
 
     private bool modelSaved = false;
 
-    private void TrySaveModel()
-    {
-        if (!modelSaved && Model != null)
-        {
-            modelSaved = true;
-            Model.Save();
-        }
-    }
-
-
     public void SetLogPath(string path)
     {
         this.logPath = path;
@@ -106,15 +95,27 @@ public partial class MLPPPOAsyncSingleton: Node
     }
 
 
+
     public void AI4UNotificationClosed()
     {
         sampleCollections.Enqueue( ("done", "") );
         TrySaveModel();
     }
 
+
+    private void TrySaveModel()
+    {
+        if (!modelSaved && Model != null)
+        {
+            modelSaved = true;
+            Model.Save();
+        }
+    }
+
     public override void _ExitTree()
     {
         sampleCollections.Enqueue( ("done", "") );
+        Task.WaitAll(trainingLoop);
         TrySaveModel();
     }
 
@@ -125,6 +126,7 @@ public partial class MLPPPOAsyncSingleton: Node
         float policyLossAverage = 0;
         while (training)
         {
+
             if (sampleCollections.TryDequeue(out (string, string) item) && Model != null)
             { 
                 if (item.Item1 ==  "done")
@@ -186,12 +188,9 @@ public partial class MLPPPOAsyncSingleton: Node
                     if (finalizedWorkers >= Model.NumberOfEnvs)
                     {
                         TrySaveModel();
-                        GD.Print("Training finished.");
-                        break;
                     }
                 }
             }
-            Thread.Sleep(10);
         }
         TrySaveModel();
         GD.Print("Training loop was finalized!!!");

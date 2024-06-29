@@ -86,8 +86,13 @@ namespace ai4u
                     request.SetMessage(2, "id", ai4u.Brain.STR, agent.ID);
                     var cmds = RequestEnvControl(agent, request);
                 }
-            }
-        }
+            	var plugin = GetTree().Root.GetNode("MLPPPOAsyncSingleton");
+				if (plugin != null)
+				{
+					plugin.Call("AI4UNotificationClosed");
+				}
+			}
+		}
 
 		public Command[] RequestEnvControl(Agent agent, RequestCommand request)
 		{
